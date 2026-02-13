@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // PumpShield Bharat - Role-based access control
+    
+    // Pumps collection - Read access for all authenticated users
+    match /pumps/{pumpId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.role in ['manager', 'engineer'];
+    }
+    
+    // Predictions - Read access for all
+    match /predictions/{pumpId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.role in ['manager', 'engineer'];
+    }
+    
+    // Maintenance log - Technicians can write, all can read
+    match /maintenance_log/{entryId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Fleet data - Only managers can write
+    match /fleet/{fleetId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.role == 'manager';
+    }
+  }
+}

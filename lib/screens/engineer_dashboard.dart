@@ -1,8 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:pump_shield_bharat/theme.dart';
 
-class EngineerDashboard extends StatelessWidget {
+class EngineerDashboard extends StatefulWidget {
   const EngineerDashboard({super.key});
+
+  @override
+  State<EngineerDashboard> createState() => _EngineerDashboardState();
+}
+
+class _EngineerDashboardState extends State<EngineerDashboard> {
+  bool _isLive = true;
+  double _currentVibration = 7.8;
+  double _currentTemp = 74.2;
+  double _thermalRate = 2.8;
+
+  List<FlSpot> _fftData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _generateInitialFFTData();
+    _startLiveUpdates();
+  }
+
+  void _generateInitialFFTData() {
+    _fftData = [];
+    for (double i = 0; i <= 20; i += 0.5) {
+      double y = 0;
+      y = 5 + (i * 2);
+      if ((i - 7.2).abs() < 1.5) {
+        y += 60 * (1 - (i - 7.2).abs() / 1.5);
+      }
+      if ((i - 14.4).abs() < 0.5) {
+        y += 30 * (1 - (i - 14.4).abs() / 0.5);
+      }
+      _fftData.add(FlSpot(i, y));
+    }
+  }
+
+  void _startLiveUpdates() {
+    Future.doWhile(() async {
+      if (!_isLive || !mounted) return false;
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (!mounted) return false;
+
+      setState(() {
+        _currentVibration = 7.5 + (DateTime.now().millisecond % 100) / 100;
+        _currentTemp = 73 + (DateTime.now().second % 10) / 10;
+        _thermalRate = 2.5 + (DateTime.now().millisecond % 100) / 500;
+
+        _fftData = _fftData.map((spot) {
+          double noise = (DateTime.now().millisecond % 20 - 10) / 20;
+          double newY = spot.y + noise;
+          if (newY < 0) newY = 0;
+          if (newY > 100) newY = 100;
+          return FlSpot(spot.x, newY);
+        }).toList();
+      });
+
+      return true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _isLive = false;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,69 +80,342 @@ class EngineerDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Pump #001',
+              'Pump #001 - ML Analytics',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 2),
-            Text('RUL: 4.2d | MAE: 2.1d | 82%', style: TextStyle(fontSize: 11)),
+            Text(
+              'RUL: 4.2d | MAE: 2.1d | 82% Accuracy',
+              style: TextStyle(fontSize: 11),
+            ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Technician Features Summary
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.darkSurface,
-                borderRadius: BorderRadius.circular(12),
+                color: _isLive
+                    ? Colors.green.withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _isLive ? Colors.green : Colors.grey),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.build, color: Colors.grey[400], size: 18),
-                  const SizedBox(width: 8),
+                  Icon(
+                    _isLive ? Icons.sensors : Icons.sensors_off,
+                    color: _isLive ? Colors.green : Colors.grey,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'TECHNICIAN VIEW',
+                    _isLive ? 'LIVE DATA' : 'PAUSED',
                     style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[400],
+                      color: _isLive ? Colors.green : Colors.grey,
                       fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  _buildMiniSensor('Vib', '7.8g', Colors.orange),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Live Sensors Row
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildLiveSensorCard(
+                      'Vibration',
+                      '${_currentVibration.toStringAsFixed(2)}g',
+                      Icons.vibration,
+                      _currentVibration > 7.0 ? Colors.orange : Colors.green,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  _buildMiniSensor('Temp', '74°C', Colors.red),
+                  Expanded(
+                    child: _buildLiveSensorCard(
+                      'Temperature',
+                      '${_currentTemp.toStringAsFixed(1)}°C',
+                      Icons.thermostat,
+                      _currentTemp > 70 ? Colors.red : Colors.green,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  _buildMiniSensor('Curr', '13.4A', Colors.orange),
+                  Expanded(
+                    child: _buildLiveSensorCard(
+                      'Thermal Rate',
+                      '${_thermalRate.toStringAsFixed(1)}°C/hr',
+                      Icons.speed,
+                      _thermalRate > 2.5 ? Colors.red : Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.darkSurface,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'VIBRATION FFT SPECTRUM',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        child: const Text(
+                          'PEAK: 1.8kHz',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: true,
+                          horizontalInterval: 20,
+                          verticalInterval: 2,
+                          getDrawingHorizontalLine: (value) {
+                            return FlLine(
+                              color: Colors.grey.withOpacity(0.3),
+                              strokeWidth: 1,
+                            );
+                          },
+                          getDrawingVerticalLine: (value) {
+                            return FlLine(
+                              color: Colors.grey.withOpacity(0.3),
+                              strokeWidth: 1,
+                            );
+                          },
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 4,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  '${value.toInt()}kHz',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 10,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 20,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  '${value.toInt()}',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 10,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          rightTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                        ),
+                        borderData: FlBorderData(
+                          show: true,
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.3),
+                          ),
+                        ),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: _fftData,
+                            isCurved: true,
+                            color: AppTheme.primaryGreen,
+                            barWidth: 2,
+                            isStrokeCapRound: true,
+                            dotData: FlDotData(show: false),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  AppTheme.primaryGreen.withOpacity(0.4),
+                                  AppTheme.primaryGreen.withOpacity(0.0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildChartLegend(
+                        'Peak Frequency',
+                        '1.8 kHz',
+                        Colors.orange,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildChartLegend(
+                        'Harmonic',
+                        '3.6 kHz',
+                        AppTheme.primaryGreen,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Sensor Analysis
-            const Text(
-              'SENSOR ANALYSIS',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.darkSurface,
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _buildFFTChart()),
-                const SizedBox(width: 12),
-                Expanded(child: _buildThermalChart()),
-              ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'THERMAL DISK RATE TREND',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.alertRed.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppTheme.alertRed),
+                        ),
+                        child: Text(
+                          'CRITICAL: ${_thermalRate.toStringAsFixed(1)}°C/hr',
+                          style: const TextStyle(
+                            color: AppTheme.alertRed,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 150,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: FlGridData(show: false),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  'T${value.toInt()}',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 9,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                        ),
+                        borderData: FlBorderData(
+                          show: true,
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.3),
+                          ),
+                        ),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: _generateThermalData(),
+                            isCurved: true,
+                            color: AppTheme.alertRed,
+                            barWidth: 3,
+                            isStrokeCapRound: true,
+                            dotData: FlDotData(show: true),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
-            // Predictive Model Outputs
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -87,34 +426,48 @@ class EngineerDashboard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'ML MODEL OUTPUTS',
+                    'ML MODEL PERFORMANCE',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
-                      _buildModelCard('LSTM', '82%', Colors.blue),
+                      Expanded(
+                        child: _buildModelCard(
+                          'LSTM',
+                          '82%',
+                          Colors.blue,
+                          'NASA CMAPSS',
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      _buildModelCard('RF', '78%', Colors.green),
+                      Expanded(
+                        child: _buildModelCard(
+                          'Random Forest',
+                          '78%',
+                          Colors.green,
+                          'Ensemble',
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   _buildFeatureImportance(),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.trending_down,
-                        color: Colors.green[400],
+                        color: Colors.green,
                         size: 16,
                       ),
                       const SizedBox(width: 6),
                       const Text(
-                        'MAE: 3.1d → 2.1d ✓',
+                        'MAE improved: 3.1d → 2.1d ✓',
                         style: TextStyle(color: Colors.green, fontSize: 12),
                       ),
                     ],
@@ -124,7 +477,6 @@ class EngineerDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Root Cause Analysis
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -147,7 +499,7 @@ class EngineerDashboard extends StatelessWidget {
                       const Icon(Icons.analytics, color: AppTheme.primaryGreen),
                       const SizedBox(width: 8),
                       const Text(
-                        'ROOT CAUSE',
+                        'ROOT CAUSE ANALYSIS',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -158,27 +510,27 @@ class EngineerDashboard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '"Bearing wear + thermal stress"',
+                    '"Bearing wear + thermal stress degradation"',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 10,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryGreen,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
-                      '87% confidence',
+                      '87% Confidence Level',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -188,50 +540,19 @@ class EngineerDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Recommendations
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.darkSurface,
-                borderRadius: BorderRadius.circular(12),
-              ),
+            // Action Buttons Row
+            Expanded(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.lightbulb, color: Colors.amber),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Replace SKF 6204 bearing, re-align coupling',
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                    ),
+                  Expanded(
+                    child: _buildActionButton(Icons.qr_code_scanner, 'QR SCAN'),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildActionButton(Icons.refresh, 'REFRESH')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildActionButton(Icons.download, 'EXPORT')),
                 ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Action Buttons
-            Row(
-              children: [
-                _buildActionButton(Icons.qr_code_scanner, 'QR'),
-                const SizedBox(width: 8),
-                _buildActionButton(Icons.data_usage, 'DATA'),
-                const SizedBox(width: 8),
-                _buildActionButton(Icons.psychology, 'ML'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.download),
-                label: const Text('Export Report'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.darkSurface,
-                  side: const BorderSide(color: Colors.grey),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
               ),
             ),
           ],
@@ -240,25 +561,56 @@ class EngineerDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildMiniSensor(String label, String value, Color color) {
+  List<FlSpot> _generateThermalData() {
+    List<FlSpot> spots = [];
+    for (int i = 0; i <= 10; i++) {
+      spots.add(FlSpot(i.toDouble(), 1.5 + (i * 0.15) + (i * i * 0.01)));
+    }
+    return spots;
+  }
+
+  Widget _buildLiveSensorCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: AppTheme.darkBg,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withOpacity(0.5)),
         ),
         child: Column(
           children: [
-            Text(label, style: TextStyle(fontSize: 8, color: Colors.grey[400])),
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 6),
             Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+              label,
+              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                Icon(
+                  color == Colors.green
+                      ? Icons.trending_flat
+                      : Icons.trending_up,
+                  color: color,
+                  size: 14,
+                ),
+              ],
             ),
           ],
         ),
@@ -266,99 +618,60 @@ class EngineerDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildFFTChart() {
+  Widget _buildModelCard(
+    String model,
+    String accuracy,
+    Color color,
+    String dataset,
+  ) {
     return Container(
-      height: 120,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.darkSurface,
+        color: AppTheme.darkBg,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Vibration FFT',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'peak @ 1.8kHz',
-            style: TextStyle(fontSize: 9, color: Colors.orange),
-          ),
-          const SizedBox(height: 6),
-          Expanded(child: CustomPaint(painter: FFTChartPainter())),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThermalChart() {
-    return Container(
-      height: 120,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppTheme.darkSurface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Thermal Rate',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.alertRed.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'CRIT',
-                  style: TextStyle(fontSize: 8, color: AppTheme.alertRed),
+              Icon(Icons.auto_graph, color: color, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      model,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      dataset,
+                      style: TextStyle(fontSize: 9, color: Colors.grey[400]),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 2),
-          const Text(
-            '2.8°C/hr',
-            style: TextStyle(fontSize: 11, color: AppTheme.alertRed),
-          ),
-          const SizedBox(height: 6),
-          Expanded(child: CustomPaint(painter: ThermalChartPainterEngineer())),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModelCard(String model, String accuracy, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppTheme.darkBg,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.5)),
-        ),
-        child: Column(
-          children: [
-            Text(model, style: TextStyle(fontSize: 11, color: color)),
-            const SizedBox(height: 2),
-            Text(
-              accuracy,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+          const SizedBox(height: 8),
+          Text(
+            accuracy,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-          ],
-        ),
+          ),
+          Text(
+            'Accuracy',
+            style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+          ),
+        ],
       ),
     );
   }
@@ -369,13 +682,13 @@ class EngineerDashboard extends StatelessWidget {
       children: [
         const Text(
           'Feature Importance',
-          style: TextStyle(fontSize: 10, color: Colors.grey),
+          style: TextStyle(fontSize: 12, color: Colors.grey),
         ),
+        const SizedBox(height: 8),
+        _buildProgressBar('Vibration RMS', 0.65, AppTheme.primaryGreen),
         const SizedBox(height: 6),
-        _buildProgressBar('Vibration', 0.65, AppTheme.primaryGreen),
-        const SizedBox(height: 4),
         _buildProgressBar('Temperature', 0.22, Colors.orange),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         _buildProgressBar('Current', 0.13, Colors.blue),
       ],
     );
@@ -385,18 +698,18 @@ class EngineerDashboard extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 70,
+          width: 80,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
           ),
         ),
         Expanded(
           child: Container(
-            height: 6,
+            height: 8,
             decoration: BoxDecoration(
               color: Colors.grey.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
@@ -404,16 +717,44 @@ class EngineerDashboard extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Text(
           '${(value * 100).toInt()}%',
-          style: TextStyle(fontSize: 10, color: color),
+          style: TextStyle(fontSize: 11, color: color),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartLegend(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$label: ',
+          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
       ],
     );
@@ -423,69 +764,14 @@ class EngineerDashboard extends StatelessWidget {
     return Expanded(
       child: ElevatedButton.icon(
         onPressed: () {},
-        icon: Icon(icon, size: 16),
-        label: Text(label, style: const TextStyle(fontSize: 10)),
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 11)),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.darkSurface,
           side: const BorderSide(color: Colors.grey),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
     );
   }
-}
-
-class FFTChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppTheme.primaryGreen
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    path.moveTo(0, size.height);
-
-    for (double i = 0; i < size.width; i += 2) {
-      final height =
-          size.height * 0.3 +
-          (i % 15 == 0 ? size.height * 0.4 : size.height * 0.1);
-      path.lineTo(i, height);
-    }
-
-    canvas.drawPath(path, paint);
-
-    final peakPaint = Paint()
-      ..color = Colors.orange
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(
-      Offset(size.width * 0.35, size.height * 0.25),
-      3,
-      peakPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class ThermalChartPainterEngineer extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = AppTheme.alertRed
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    path.moveTo(0, size.height * 0.7);
-    path.lineTo(size.width * 0.3, size.height * 0.5);
-    path.lineTo(size.width * 0.6, size.height * 0.35);
-    path.lineTo(size.width, size.height * 0.15);
-
-    canvas.drawPath(path, linePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
