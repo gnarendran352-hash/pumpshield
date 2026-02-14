@@ -134,8 +134,9 @@ class _EngineerDashboardState extends State<EngineerDashboard> {
             ),
             const SizedBox(height: 20),
 
-            // Live Sensors Row
-            Expanded(
+            // Live Sensors Row - Using Column with fixed height containers
+            SizedBox(
+              height: 120,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -541,9 +542,9 @@ class _EngineerDashboardState extends State<EngineerDashboard> {
             const SizedBox(height: 16),
 
             // Action Buttons Row
-            Expanded(
+            SizedBox(
+              height: 60,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: _buildActionButton(Icons.qr_code_scanner, 'QR SCAN'),
@@ -575,45 +576,39 @@ class _EngineerDashboardState extends State<EngineerDashboard> {
     IconData icon,
     Color color,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.darkBg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.5)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Icon(
-                  color == Colors.green
-                      ? Icons.trending_flat
-                      : Icons.trending_up,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.darkBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 6),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                   color: color,
-                  size: 14,
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              Icon(
+                color == Colors.green ? Icons.trending_flat : Icons.trending_up,
+                color: color,
+                size: 14,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -761,7 +756,8 @@ class _EngineerDashboardState extends State<EngineerDashboard> {
   }
 
   Widget _buildActionButton(IconData icon, String label) {
-    return Expanded(
+    return SizedBox(
+      height: 60,
       child: ElevatedButton.icon(
         onPressed: () {},
         icon: Icon(icon, size: 18),

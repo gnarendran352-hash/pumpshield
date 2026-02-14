@@ -130,11 +130,13 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
 
       setState(() {
         // Simulate live updates
-        _savingsData.last.copyWith(
-          y: 1.82 + (DateTime.now().second % 10) / 100,
+        _savingsData[_savingsData.length - 1] = FlSpot(
+          (_savingsData.length - 1).toDouble(),
+          1.82 + (DateTime.now().second % 10) / 100,
         );
-        _fleetHealthData.last.copyWith(
-          y: 77 + (DateTime.now().second % 5) / 10,
+        _fleetHealthData[_fleetHealthData.length - 1] = FlSpot(
+          (_fleetHealthData.length - 1).toDouble(),
+          77 + (DateTime.now().second % 5) / 10,
         );
       });
 
@@ -890,32 +892,41 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildTeamMember(
-                        'Ravi',
-                        'Tech',
-                        Icons.build,
-                        const Color(0xFFFF7043),
-                        '12 Jobs',
-                      ),
-                      const SizedBox(width: 12),
-                      _buildTeamMember(
-                        'Priya',
-                        'Eng',
-                        Icons.analytics,
-                        AppTheme.primaryGreen,
-                        '8 Reports',
-                      ),
-                      const SizedBox(width: 12),
-                      _buildTeamMember(
-                        'You',
-                        'Mgr',
-                        Icons.dashboard,
-                        const Color(0xFF5C6BC0),
-                        '5 Approvals',
-                      ),
-                    ],
+                  SizedBox(
+                    height: 100,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildTeamMember(
+                            'Ravi',
+                            'Tech',
+                            Icons.build,
+                            const Color(0xFFFF7043),
+                            '12 Jobs',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTeamMember(
+                            'Priya',
+                            'Eng',
+                            Icons.analytics,
+                            AppTheme.primaryGreen,
+                            '8 Reports',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTeamMember(
+                            'You',
+                            'Mgr',
+                            Icons.dashboard,
+                            const Color(0xFF5C6BC0),
+                            '5 Approvals',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1410,58 +1421,56 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
     Color color,
     String stats,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    shape: BoxShape.circle,
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(fontSize: 11, color: Colors.white),
                   ),
-                  child: Icon(icon, color: color, size: 18),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(fontSize: 11, color: Colors.white),
-                    ),
-                    Text(role, style: TextStyle(fontSize: 9, color: color)),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4),
+                  Text(role, style: TextStyle(fontSize: 9, color: color)),
+                ],
               ),
-              child: Text(
-                stats,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              stats,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
